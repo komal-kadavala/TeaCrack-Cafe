@@ -32,22 +32,22 @@ export default async function handler(req, res) {
       const reviews = await listReviews();
       return res.status(200).json(reviews);
     } catch (error) {
-      console.error('Unable to list reviews:', error);
-      return res.status(500).json({ error: 'Unable to load reviews right now.' });
+      console.error('[reviews] Unable to list reviews:', error);
+      return res.status(500).json({ success: false, error: error.message || 'Unable to load reviews right now.' });
     }
   }
 
   if (req.method === 'POST') {
     try {
       const payload = await readJsonBody(req);
-      const review = await createReview(payload);
+      const review = await createReview(payload && typeof payload === 'object' ? payload : {});
       return res.status(201).json(review);
     } catch (error) {
       const statusCode = error.statusCode || 500;
-      return res.status(statusCode).json({ error: error.message || 'Unable to save review.' });
+      return res.status(statusCode).json({ success: false, error: error.message || 'Unable to save review.' });
     }
   }
 
   res.setHeader('Allow', 'GET, POST');
-  return res.status(405).json({ error: 'Method not allowed.' });
+  return res.status(405).json({ success: false, error: 'Method not allowed.' });
 }
