@@ -1,0 +1,26 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isValidReview(request.resource.data);
+      allow update, delete: if false;
+    }
+  }
+
+  function isValidReview(data) {
+    return data.keys().hasAll(['name', 'rating', 'comment', 'date', 'createdAt'])
+      && data.name is string
+      && data.name.trim().size() >= 2
+      && data.name.trim().size() <= 60
+      && data.rating is int
+      && data.rating >= 1
+      && data.rating <= 5
+      && data.comment is string
+      && data.comment.trim().size() >= 5
+      && data.comment.trim().size() <= 500
+      && data.date is string
+      && data.createdAt is int
+      && data.createdAt >= 0;
+  }
+}

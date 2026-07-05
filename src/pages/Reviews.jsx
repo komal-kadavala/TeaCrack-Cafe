@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import useScrollReveal from '../hooks/useScrollReveal';
 import ReviewCard from '../components/ReviewCard';
+import { sanitizeReviewInput, formatReviewDate, getReviewFingerprint } from '../services/reviewUtils';
+
+const API_URL = import.meta.env.VITE_API_URL || '/api/reviews';
 
 export default function Reviews() {
   const [reviews, setReviews] = useState([]);
@@ -9,27 +12,21 @@ export default function Reviews() {
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [message, setMessage] = useState({ text: '', type: '' });
-  const [visibleCount, setVisibleCount] = useState(5); // Show 5 reviews initially
+  const [visibleCount, setVisibleCount] = useState(5);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   useScrollReveal(reviews);
 
-  const API_URL = 'http://localhost:5000/api/reviews';
-
-  // Load reviews from API database
   const fetchReviews = async () => {
     try {
       const response = await fetch(API_URL);
-      if (!response.ok) throw new Error('Failed to fetch reviews');
-      const data = await response.json();
-      setReviews(data);
+      if (!response.ok) throw new Error('Unable to fetch reviews');
+      const nextReviews = await response.json();
+      setReviews(nextReviews);
     } catch (error) {
-      console.error("API error fetching reviews:", error);
-      // Fail-safe load from localStorage if API is unavailable
-      const storedReviews = localStorage.getItem('teacrack_reviews');
-      if (storedReviews) {
-        setReviews(JSON.parse(storedReviews));
-      }
+      console.error('Unable to load reviews:', error);
+      setMessage({ text: 'We could not load reviews right now. Please try again shortly.', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -42,46 +39,56 @@ export default function Reviews() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!name.trim()) {
-      showMsg('Please enter your name.', 'error');
-      return;
-    }
-    if (rating === 0) {
-      showMsg('Please select a star rating.', 'error');
-      return;
-    }
-    if (!comment.trim()) {
-      showMsg('Please write something about your experience.', 'error');
+    const { sanitizedName, sanitizedRating, sanitizedComment, errors } = sanitizeReviewInput({
+      name,
+      rating,
+      comment,
+    });
+
+    if (errors.length > 0) {
+      showMsg(errors[0], 'error');
       return;
     }
 
-    const reviewData = {
-      name: name.trim(),
-      rating,
-      comment: comment.trim()
-    };
+    const submissionFingerprint = getReviewFingerprint({
+      name: sanitizedName,
+      rating: sanitizedRating,
+      comment: sanitizedComment,
+    });
+
+    const duplicate = reviews.some((review) => getReviewFingerprint(review) === submissionFingerprint);
+    if (duplicate) {
+      showMsg('This review appears to be a duplicate. Please try a different comment.', 'error');
+      return;
+    }
+
+    setSubmitting(true);
 
     try {
       const response = await fetch(API_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(reviewData)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: sanitizedName,
+          rating: sanitizedRating,
+          comment: sanitizedComment,
+        }),
       });
 
-      if (!response.ok) throw new Error('API server rejected the post');
-      
+      if (!response.ok) {
+        const errorPayload = await response.json().catch(() => ({}));
+        throw new Error(errorPayload.error || 'Unable to save review');
+      }
+
       const newReview = await response.json();
-      
-      // Update state in real-time (prepend new review to list)
       setReviews((prevReviews) => [newReview, ...prevReviews]);
-      
       showMsg('✅ Review posted successfully! Thank you 🍵', 'success');
       resetForm();
     } catch (error) {
-      console.error("API error saving review:", error);
-      showMsg('Database connection error. Unable to post review.', 'error');
+      console.error('Unable to save review:', error);
+      showMsg(error.message || 'We could not save your review right now. Please try again shortly.', 'error');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -93,7 +100,8 @@ export default function Reviews() {
 
   const showMsg = (text, type) => {
     setMessage({ text, type });
-    setTimeout(() => setMessage({ text: '', type: '' }), 3500);
+    window.clearTimeout(showMsg.timeout);
+    showMsg.timeout = window.setTimeout(() => setMessage({ text: '', type: '' }), 4000);
   };
 
   const handleLoadMore = () => {
@@ -103,8 +111,6 @@ export default function Reviews() {
   return (
     <section id="feedback" style={{ minHeight: '100vh', paddingTop: '140px' }}>
       <div className="container">
-        
-        {/* Page Heading & Subtitle */}
         <div className="reveal" style={{ textAlign: 'center', marginBottom: '52px' }}>
           <p className="section-label">Your Voice Matters</p>
           <h2 className="section-title">Leave a Review</h2>
@@ -113,16 +119,13 @@ export default function Reviews() {
           </p>
         </div>
 
-        {/* Reviews Layout Container */}
         <div className="reviews-layout">
-          
-          {/* 1. What People Say - Existing Reviews First */}
           <div className="reveal reviews-list-section">
             <h3 style={{ textAlign: 'center', fontSize: '2rem', marginBottom: '24px' }}>What People Say</h3>
-            
+
             {loading ? (
               <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}>
-                Loading reviews from database...
+                Loading reviews from the database...
               </div>
             ) : reviews.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px', color: '#aaa', fontStyle: 'italic' }}>
@@ -131,7 +134,7 @@ export default function Reviews() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 {reviews.slice(0, visibleCount).map((r, idx) => (
-                  <ReviewCard 
+                  <ReviewCard
                     key={r.id || idx}
                     name={r.name}
                     rating={r.rating}
@@ -139,11 +142,10 @@ export default function Reviews() {
                     date={r.date}
                   />
                 ))}
-                
-                {/* Load More Pagination */}
+
                 {reviews.length > visibleCount && (
-                  <button 
-                    onClick={handleLoadMore} 
+                  <button
+                    onClick={handleLoadMore}
                     className="btn btn-outline"
                     style={{ alignSelf: 'center', marginTop: '16px' }}
                   >
@@ -156,16 +158,15 @@ export default function Reviews() {
 
           <hr style={{ border: 'none', borderTop: '2px dashed rgba(26,58,58,0.15)', margin: '20px 0' }} />
 
-          {/* 2. Write Your Review - Form at the Bottom */}
           <div className="reveal review-form-card" style={{ maxWidth: '640px', margin: '0 auto', width: '100%' }}>
             <h3 style={{ fontSize: '2rem', textAlign: 'center', marginBottom: '24px' }}>Write Your Review</h3>
             <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label className="form-label">Your Name</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  placeholder="e.g. Raj Patel" 
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="e.g. Raj Patel"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                 />
@@ -183,7 +184,7 @@ export default function Reviews() {
                       style={{
                         transform: (hoverRating || rating) >= star ? 'scale(1.2)' : 'scale(1)',
                         opacity: (hoverRating || rating) >= star ? '1' : '0.35',
-                        display: 'inline-block'
+                        display: 'inline-block',
                       }}
                     >
                       ⭐
@@ -194,32 +195,33 @@ export default function Reviews() {
 
               <div className="form-group">
                 <label className="form-label">Your Experience</label>
-                <textarea 
-                  rows="4" 
-                  className="form-input" 
-                  placeholder="Tell others what you loved..." 
+                <textarea
+                  rows="4"
+                  className="form-input"
+                  placeholder="Tell others what you loved..."
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
                   style={{ resize: 'vertical' }}
                 />
               </div>
 
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 className="btn btn-primary"
                 style={{ width: '100%', fontFamily: 'Bebas Neue, sans-serif', fontSize: '1.25rem', letterSpacing: '3px' }}
+                disabled={submitting}
               >
-                POST REVIEW →
+                {submitting ? 'POSTING...' : 'POST REVIEW →'}
               </button>
 
               {message.text && (
-                <div 
-                  style={{ 
-                    marginTop: '14px', 
-                    textAlign: 'center', 
-                    color: message.type === 'error' ? 'var(--red)' : 'var(--teal)', 
-                    fontWeight: 700, 
-                    fontSize: '0.95rem' 
+                <div
+                  style={{
+                    marginTop: '14px',
+                    textAlign: 'center',
+                    color: message.type === 'error' ? 'var(--red)' : 'var(--teal)',
+                    fontWeight: 700,
+                    fontSize: '0.95rem',
                   }}
                 >
                   {message.text}
@@ -227,7 +229,6 @@ export default function Reviews() {
               )}
             </form>
           </div>
-
         </div>
       </div>
     </section>

@@ -1,16 +1,37 @@
-# React + Vite
+# TeaCrack Café
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+This project now includes a production-ready review system backed by Firebase Firestore.
 
-Currently, two official plugins are available:
+## Review system setup
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+1. Create a Firebase project at https://console.firebase.google.com.
+2. Enable Firestore Database.
+3. Create a web app and copy the config values into the Vite environment variables.
+4. Copy .env.example to .env and fill in the values.
+5. Deploy the Firestore rules from firestore.rules.
 
-## React Compiler
+## Required environment variables
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- VITE_FIREBASE_API_KEY
+- VITE_FIREBASE_AUTH_DOMAIN
+- VITE_FIREBASE_PROJECT_ID
+- VITE_FIREBASE_STORAGE_BUCKET
+- VITE_FIREBASE_MESSAGING_SENDER_ID
+- VITE_FIREBASE_APP_ID
 
-## Expanding the Oxlint configuration
+## Vercel deployment
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+1. Push the repository to GitHub.
+2. In Vercel, create a new project from the repository.
+3. Add the same six Firebase values in Project Settings > Environment Variables.
+4. Deploy.
+
+## Firestore rules
+
+The public review collection uses the rules in firestore.rules to allow reads for everyone and writes with validation.
+
+## Local development
+
+- npm install
+- cp .env.example .env
+- npm run dev
