@@ -39,14 +39,23 @@ export default function Reviews() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const { sanitizedName, sanitizedRating, sanitizedComment, errors } = sanitizeReviewInput({
+    const validation = sanitizeReviewInput({
       name,
       rating,
       comment,
     });
+    const {
+      sanitizedName,
+      sanitizedRating,
+      sanitizedComment,
+      errors = [],
+    } = validation || {};
 
-    if (errors.length > 0) {
-      showMsg(errors[0], 'error');
+    const safeErrors = Array.isArray(errors) ? errors : [];
+    console.log('[reviews] validation error count', safeErrors.length);
+
+    if (safeErrors.length > 0) {
+      showMsg(safeErrors[0], 'error');
       return;
     }
 
@@ -108,6 +117,10 @@ export default function Reviews() {
     setVisibleCount((prev) => prev + 5);
   };
 
+  const reviewList = Array.isArray(reviews) ? reviews : [];
+  const reviewCount = reviewList.length;
+  console.log('[reviews] current review count', reviewCount);
+
   return (
     <section id="feedback" style={{ minHeight: '100vh', paddingTop: '140px' }}>
       <div className="container">
@@ -127,13 +140,13 @@ export default function Reviews() {
               <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}>
                 Loading reviews from the database...
               </div>
-            ) : reviews.length === 0 ? (
+            ) : reviewCount === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px', color: '#aaa', fontStyle: 'italic' }}>
                 Be the first to leave a review!
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                {reviews.slice(0, visibleCount).map((r, idx) => (
+                {reviewList.slice(0, visibleCount).map((r, idx) => (
                   <ReviewCard
                     key={r.id || idx}
                     name={r.name}
@@ -143,7 +156,7 @@ export default function Reviews() {
                   />
                 ))}
 
-                {reviews.length > visibleCount && (
+                {reviewCount > visibleCount && (
                   <button
                     onClick={handleLoadMore}
                     className="btn btn-outline"

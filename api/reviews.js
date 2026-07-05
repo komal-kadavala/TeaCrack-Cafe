@@ -10,7 +10,9 @@ async function readJsonBody(req) {
     chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
   }
 
-  if (!chunks.length) {
+  const chunkCount = Array.isArray(chunks) ? chunks.length : 0;
+  console.log('[reviews] incoming body chunk count', chunkCount);
+  if (chunkCount === 0) {
     return {};
   }
 

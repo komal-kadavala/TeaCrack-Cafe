@@ -10,10 +10,12 @@ export default function Hero() {
     container.innerHTML = ''; // Clear previous
 
     const emojis = ['🍵', '☕', '🍕', '🥪', '🍟', '🍔'];
+    const emojiCount = Array.isArray(emojis) ? emojis.length : 0;
+    console.log('[hero] emoji count', emojiCount);
     for (let i = 0; i < 15; i++) {
       const el = document.createElement('div');
       el.className = 'floater';
-      el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+      el.textContent = emojiCount > 0 ? emojis[Math.floor(Math.random() * emojiCount)] : '🍵';
       el.style.left = `${Math.random() * 100}%`;
       el.style.top = `${Math.random() * 100}%`;
       el.style.fontSize = `${Math.random() * 2 + 1.5}rem`;

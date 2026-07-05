@@ -19,8 +19,10 @@ function getAdminApp() {
   console.log('SERVICE_ACCOUNT_EXISTS:', !!serviceAccount);
   console.log('==========================================');
 
-  if (admin.apps.length) {
-    adminApp = admin.app();
+  const adminApps = Array.isArray(admin.getApps()) ? admin.getApps() : [];
+  console.log('[reviews] admin app count', Array.isArray(adminApps) ? adminApps.length : 0);
+  if (adminApps.length > 0) {
+    adminApp = admin.getApp();
     return adminApp;
   }
 
@@ -90,10 +92,13 @@ export async function createReview(input) {
     sanitizedRating,
     sanitizedComment,
     errors = [],
-  } = validation;
+  } = validation || {};
 
-  if (errors.length) {
-    const err = new Error(errors[0]);
+  const safeErrors = Array.isArray(errors) ? errors : [];
+  console.log('[reviews] validation error count', safeErrors.length);
+
+  if (safeErrors.length > 0) {
+    const err = new Error(safeErrors[0] || 'The review data is invalid.');
     err.statusCode = 400;
     throw err;
   }

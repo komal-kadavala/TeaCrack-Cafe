@@ -8,13 +8,15 @@ function stripHtml(value) {
     .trim();
 }
 
-export function sanitizeReviewInput({ name, rating, comment }) {
+export function sanitizeReviewInput(input = {}) {
+  const { name, rating, comment } = input ?? {};
   const sanitizedName = stripHtml(name).slice(0, MAX_NAME_LENGTH);
   const sanitizedComment = stripHtml(comment).slice(0, MAX_COMMENT_LENGTH);
   const parsedRating = Number(rating);
   const isValidRating = Number.isInteger(parsedRating) && parsedRating >= 1 && parsedRating <= 5;
 
   const errors = [];
+  console.log('[reviews] sanitizing review input', { name: sanitizedName, rating: parsedRating, commentLength: (sanitizedComment ?? '').length });
 
   if (!sanitizedName) {
     errors.push('Please enter your name.');
@@ -26,7 +28,7 @@ export function sanitizeReviewInput({ name, rating, comment }) {
 
   if (!sanitizedComment) {
     errors.push('Please write a review comment.');
-  } else if (sanitizedComment.length < 5) {
+  } else if ((sanitizedComment ?? '').length < 5) {
     errors.push('Your comment should be at least 5 characters long.');
   }
 
@@ -46,5 +48,6 @@ export function formatReviewDate(timestamp = Date.now()) {
 }
 
 export function getReviewFingerprint(review) {
-  return `${review.name}|${review.rating}|${review.comment}`.toLowerCase();
+  const safeReview = review ?? {};
+  return `${safeReview.name ?? ''}|${safeReview.rating ?? ''}|${safeReview.comment ?? ''}`.toLowerCase();
 }
