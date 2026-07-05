@@ -1,0 +1,18 @@
+[
+  {
+    "id": "seed-1",
+    "name": "Rahul Sharma",
+    "rating": 5,
+    "comment": "The Masala Chai is absolute perfection! It has the right amount of spices. Highly recommend the American Garden Pizza too.",
+    "date": "14 Jun 2026 at 04:30 PM",
+    "createdAt": 1781434800000
+  },
+  {
+    "id": "seed-2",
+    "name": "Anjali Mehta",
+    "rating": 5,
+    "comment": "Warm seating arrangement and lovely background vibes. KitKat milkshake was extremely thick and delicious.",
+    "date": "28 May 2026 at 06:15 PM",
+    "createdAt": 1779972300000
+  }
+]
