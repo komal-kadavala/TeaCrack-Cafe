@@ -9,6 +9,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_REVIEWS_FILE = path.join(__dirname, 'reviews.json');
 
 let adminApp = null;
+let memoryReviews = [];
+let persistenceMode = 'memory';
 
 function getReviewsDataFile() {
   const configuredPath = process.env.REVIEWS_DATA_FILE;
@@ -20,26 +22,64 @@ function getReviewsDataFile() {
 }
 
 async function readLocalReviews() {
+  if (memoryReviews.length > 0) {
+    return memoryReviews;
+  }
+
   const reviewsFile = getReviewsDataFile();
 
   try {
     const raw = await fs.readFile(reviewsFile, 'utf8');
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    if (Array.isArray(parsed)) {
+      memoryReviews = parsed;
+      persistenceMode = 'file';
+      return parsed;
+    }
   } catch (error) {
     if (error && error.code === 'ENOENT') {
+      memoryReviews = [];
+      persistenceMode = 'memory';
       return [];
     }
 
+    if (error && (error.code === 'EROFS' || error.code === 'EPERM')) {
+      persistenceMode = 'memory';
+      console.warn('[reviews] File system is read-only; using in-memory review store.', error);
+      return memoryReviews;
+    }
+
     console.error('[reviews] Unable to read local review store:', error);
-    return [];
   }
+
+  if (persistenceMode === 'memory') {
+    return memoryReviews;
+  }
+
+  return [];
 }
 
 async function writeLocalReviews(reviews) {
+  memoryReviews = reviews;
+
+  if (persistenceMode === 'memory') {
+    return;
+  }
+
   const reviewsFile = getReviewsDataFile();
-  await fs.mkdir(path.dirname(reviewsFile), { recursive: true });
-  await fs.writeFile(reviewsFile, JSON.stringify(reviews, null, 2), 'utf8');
+
+  try {
+    await fs.mkdir(path.dirname(reviewsFile), { recursive: true });
+    await fs.writeFile(reviewsFile, JSON.stringify(reviews, null, 2), 'utf8');
+  } catch (error) {
+    if (error && (error.code === 'EROFS' || error.code === 'EPERM')) {
+      persistenceMode = 'memory';
+      console.warn('[reviews] File system is read-only; continuing with in-memory review store.', error);
+      return;
+    }
+
+    console.error('[reviews] Unable to write local review store:', error);
+  }
 }
 
 function getAdminApp() {
@@ -88,7 +128,7 @@ function getAdminApp() {
       return adminApp;
     }
 
-    console.warn('[reviews] Firebase Admin is not configured; using local JSON review store.');
+    console.warn('[reviews] Firebase Admin is not configured; using local review store.');
     return null;
   } catch (err) {
     console.error('Firebase initialization failed:', err);
@@ -122,7 +162,7 @@ function isFirestoreFallbackError(error) {
 export async function listReviews() {
   const db = getFirestoreDb();
   if (!db) {
-    console.log('Loading reviews from local file store...');
+    console.log('Loading reviews from local review store...');
     return readLocalReviews();
   }
 
