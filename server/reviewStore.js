@@ -1,4 +1,5 @@
 import { promises as fs } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { initializeApp as initializeFirebaseApp, cert, getApps as getFirebaseApps } from 'firebase-admin/app';
@@ -16,6 +17,10 @@ function getReviewsDataFile() {
   const configuredPath = process.env.REVIEWS_DATA_FILE;
   if (configuredPath) {
     return path.isAbsolute(configuredPath) ? configuredPath : path.resolve(process.cwd(), configuredPath);
+  }
+
+  if (process.env.VERCEL || process.env.NETLIFY || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.LAMBDA_TASK_ROOT) {
+    return path.join(os.tmpdir(), 'teacracke-reviews.json');
   }
 
   return DEFAULT_REVIEWS_FILE;
