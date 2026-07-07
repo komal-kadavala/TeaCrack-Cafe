@@ -92,13 +92,31 @@ function getAdminApp() {
     return null;
   } catch (err) {
     console.error('Firebase initialization failed:', err);
-    throw err;
+    return null;
   }
 }
 
 function getFirestoreDb() {
   const app = getAdminApp();
   return app ? getFirestore(app) : null;
+}
+
+function isFirestoreFallbackError(error) {
+  const code = error?.code ?? error?.status ?? error?.errorInfo?.code;
+  const codeText = String(code ?? '').toLowerCase();
+  const messageText = String(error?.message ?? '').toLowerCase();
+
+  return (
+    code === 5 ||
+    codeText.includes('not_found') ||
+    codeText.includes('not-found') ||
+    codeText.includes('failed-precondition') ||
+    codeText.includes('unavailable') ||
+    codeText.includes('deadline-exceeded') ||
+    codeText.includes('internal') ||
+    messageText.includes('not_found') ||
+    messageText.includes('not-found')
+  );
 }
 
 export async function listReviews() {
@@ -108,21 +126,30 @@ export async function listReviews() {
     return readLocalReviews();
   }
 
-  console.log('Loading reviews from Firestore...');
+  try {
+    console.log('Loading reviews from Firestore...');
 
-  const snapshot = await db
-    .collection('reviews')
-    .orderBy('createdAt', 'desc')
-    .limit(50)
-    .get();
+    const snapshot = await db
+      .collection('reviews')
+      .orderBy('createdAt', 'desc')
+      .limit(50)
+      .get();
 
-  console.log(`Loaded ${snapshot.size} reviews`);
+    console.log(`Loaded ${snapshot.size} reviews`);
 
-  return snapshot.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-    date: doc.data().date || formatReviewDate(doc.data().createdAt),
-  }));
+    return snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+      date: doc.data().date || formatReviewDate(doc.data().createdAt),
+    }));
+  } catch (error) {
+    if (isFirestoreFallbackError(error)) {
+      console.warn('[reviews] Firestore is unavailable; falling back to local review store.', error);
+      return readLocalReviews();
+    }
+
+    throw error;
+  }
 }
 
 export async function createReview(input) {
@@ -172,12 +199,27 @@ export async function createReview(input) {
     };
   }
 
-  const doc = await db.collection('reviews').add(review);
+  try {
+    const doc = await db.collection('reviews').add(review);
 
-  console.log('Saved review:', doc.id);
+    console.log('Saved review:', doc.id);
 
-  return {
-    id: doc.id,
-    ...review,
-  };
+    return {
+      id: doc.id,
+      ...review,
+    };
+  } catch (error) {
+    if (isFirestoreFallbackError(error)) {
+      const existingReviews = await readLocalReviews();
+      const nextReviews = [{ id: `local-${createdAt}`, ...review }, ...existingReviews];
+      await writeLocalReviews(nextReviews);
+      console.warn('[reviews] Firestore write failed, stored review locally.', error);
+      return {
+        id: `local-${createdAt}`,
+        ...review,
+      };
+    }
+
+    throw error;
+  }
 }
