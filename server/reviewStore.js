@@ -2,16 +2,17 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { initializeApp as initializeFirebaseApp, cert, getApps as getFirebaseApps } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { collection, getDocs, addDoc, query, orderBy, limit, getFirestore } from 'firebase/firestore';
 import { sanitizeReviewInput, formatReviewDate } from '../src/services/reviewUtils.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_REVIEWS_FILE = path.join(__dirname, 'reviews.json');
 
-let adminApp = null;
 let memoryReviews = [];
 let persistenceMode = 'memory';
+let firestoreDb = null;
+let firestoreInitAttempted = false;
 
 function getReviewsDataFile() {
   const configuredPath = process.env.REVIEWS_DATA_FILE;
@@ -87,63 +88,45 @@ async function writeLocalReviews(reviews) {
   }
 }
 
-function getAdminApp() {
-  if (adminApp) return adminApp;
+function getFirebaseConfig() {
+  const config = {
+    apiKey: process.env.FIREBASE_API_KEY || process.env.VITE_FIREBASE_API_KEY,
+    authDomain: process.env.FIREBASE_AUTH_DOMAIN || process.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.FIREBASE_STORAGE_BUCKET || process.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.FIREBASE_APP_ID || process.env.VITE_FIREBASE_APP_ID,
+  };
 
-  const projectId = process.env.FIREBASE_PROJECT_ID?.trim();
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n').trim();
-  const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT?.trim();
-
-  console.log('========== Firebase Environment ==========');
-  console.log('PROJECT_ID:', projectId || '(missing)');
-  console.log('CLIENT_EMAIL:', clientEmail || '(missing)');
-  console.log('PRIVATE_KEY_EXISTS:', !!privateKey);
-  console.log('SERVICE_ACCOUNT_EXISTS:', !!serviceAccount);
-  console.log('==========================================');
-
-  const adminApps = Array.isArray(getFirebaseApps()) ? getFirebaseApps() : [];
-  console.log('[reviews] admin app count', Array.isArray(adminApps) ? adminApps.length : 0);
-  if (adminApps.length > 0) {
-    adminApp = adminApps[0];
-    return adminApp;
-  }
-
-  try {
-    if (serviceAccount) {
-      const parsed = JSON.parse(serviceAccount);
-      adminApp = initializeFirebaseApp({
-        credential: cert(parsed),
-      });
-
-      console.log('Firebase initialized using FIREBASE_SERVICE_ACCOUNT');
-      return adminApp;
-    }
-
-    if (projectId && clientEmail && privateKey) {
-      adminApp = initializeFirebaseApp({
-        credential: cert({
-          projectId,
-          clientEmail,
-          privateKey,
-        }),
-      });
-
-      console.log('Firebase initialized using individual environment variables');
-      return adminApp;
-    }
-
-    console.warn('[reviews] Firebase Admin is not configured; using local review store.');
-    return null;
-  } catch (err) {
-    console.error('Firebase initialization failed:', err);
-    return null;
-  }
+  const isConfigured = Boolean(config.apiKey && config.projectId);
+  return isConfigured ? config : null;
 }
 
 function getFirestoreDb() {
-  const app = getAdminApp();
-  return app ? getFirestore(app) : null;
+  if (firestoreDb) {
+    return firestoreDb;
+  }
+
+  if (firestoreInitAttempted) {
+    return null;
+  }
+
+  firestoreInitAttempted = true;
+  const config = getFirebaseConfig();
+
+  if (!config) {
+    console.warn('[reviews] Firebase web config is missing; using local review store.');
+    return null;
+  }
+
+  try {
+    const app = getApps().length > 0 ? getApp() : initializeApp(config);
+    firestoreDb = getFirestore(app);
+    return firestoreDb;
+  } catch (error) {
+    console.error('[reviews] Firestore initialization failed:', error);
+    return null;
+  }
 }
 
 function isFirestoreFallbackError(error) {
@@ -174,11 +157,8 @@ export async function listReviews() {
   try {
     console.log('Loading reviews from Firestore...');
 
-    const snapshot = await db
-      .collection('reviews')
-      .orderBy('createdAt', 'desc')
-      .limit(50)
-      .get();
+    const q = query(collection(db, 'reviews'), orderBy('createdAt', 'desc'), limit(50));
+    const snapshot = await getDocs(q);
 
     console.log(`Loaded ${snapshot.size} reviews`);
 
@@ -245,12 +225,12 @@ export async function createReview(input) {
   }
 
   try {
-    const doc = await db.collection('reviews').add(review);
+    const docRef = await addDoc(collection(db, 'reviews'), review);
 
-    console.log('Saved review:', doc.id);
+    console.log('Saved review:', docRef.id);
 
     return {
-      id: doc.id,
+      id: docRef.id,
       ...review,
     };
   } catch (error) {
