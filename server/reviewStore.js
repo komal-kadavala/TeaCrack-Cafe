@@ -1,37 +1,74 @@
-import admin from 'firebase-admin';
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { initializeApp as initializeFirebaseApp, cert, getApps as getFirebaseApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { sanitizeReviewInput, formatReviewDate } from '../src/services/reviewUtils.js';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const DEFAULT_REVIEWS_FILE = path.join(__dirname, 'reviews.json');
+
 let adminApp = null;
+
+function getReviewsDataFile() {
+  const configuredPath = process.env.REVIEWS_DATA_FILE;
+  if (configuredPath) {
+    return path.isAbsolute(configuredPath) ? configuredPath : path.resolve(process.cwd(), configuredPath);
+  }
+
+  return DEFAULT_REVIEWS_FILE;
+}
+
+async function readLocalReviews() {
+  const reviewsFile = getReviewsDataFile();
+
+  try {
+    const raw = await fs.readFile(reviewsFile, 'utf8');
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    if (error && error.code === 'ENOENT') {
+      return [];
+    }
+
+    console.error('[reviews] Unable to read local review store:', error);
+    return [];
+  }
+}
+
+async function writeLocalReviews(reviews) {
+  const reviewsFile = getReviewsDataFile();
+  await fs.mkdir(path.dirname(reviewsFile), { recursive: true });
+  await fs.writeFile(reviewsFile, JSON.stringify(reviews, null, 2), 'utf8');
+}
 
 function getAdminApp() {
   if (adminApp) return adminApp;
 
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-  const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
+  const projectId = process.env.FIREBASE_PROJECT_ID?.trim();
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n').trim();
+  const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT?.trim();
 
   console.log('========== Firebase Environment ==========');
-  console.log('PROJECT_ID:', projectId);
-  console.log('CLIENT_EMAIL:', clientEmail);
+  console.log('PROJECT_ID:', projectId || '(missing)');
+  console.log('CLIENT_EMAIL:', clientEmail || '(missing)');
   console.log('PRIVATE_KEY_EXISTS:', !!privateKey);
   console.log('SERVICE_ACCOUNT_EXISTS:', !!serviceAccount);
   console.log('==========================================');
 
-  const adminApps = Array.isArray(admin.getApps()) ? admin.getApps() : [];
+  const adminApps = Array.isArray(getFirebaseApps()) ? getFirebaseApps() : [];
   console.log('[reviews] admin app count', Array.isArray(adminApps) ? adminApps.length : 0);
   if (adminApps.length > 0) {
-    adminApp = admin.getApp();
+    adminApp = adminApps[0];
     return adminApp;
   }
 
   try {
     if (serviceAccount) {
       const parsed = JSON.parse(serviceAccount);
-
-      adminApp = admin.initializeApp({
-        credential: admin.credential.cert(parsed),
+      adminApp = initializeFirebaseApp({
+        credential: cert(parsed),
       });
 
       console.log('Firebase initialized using FIREBASE_SERVICE_ACCOUNT');
@@ -39,8 +76,8 @@ function getAdminApp() {
     }
 
     if (projectId && clientEmail && privateKey) {
-      adminApp = admin.initializeApp({
-        credential: admin.credential.cert({
+      adminApp = initializeFirebaseApp({
+        credential: cert({
           projectId,
           clientEmail,
           privateKey,
@@ -51,19 +88,27 @@ function getAdminApp() {
       return adminApp;
     }
 
-    throw new Error(
-      'Missing Firebase environment variables.'
-    );
+    console.warn('[reviews] Firebase Admin is not configured; using local JSON review store.');
+    return null;
   } catch (err) {
     console.error('Firebase initialization failed:', err);
     throw err;
   }
 }
 
-export async function listReviews() {
-  const db = getFirestore(getAdminApp());
+function getFirestoreDb() {
+  const app = getAdminApp();
+  return app ? getFirestore(app) : null;
+}
 
-  console.log('Loading reviews...');
+export async function listReviews() {
+  const db = getFirestoreDb();
+  if (!db) {
+    console.log('Loading reviews from local file store...');
+    return readLocalReviews();
+  }
+
+  console.log('Loading reviews from Firestore...');
 
   const snapshot = await db
     .collection('reviews')
@@ -103,8 +148,7 @@ export async function createReview(input) {
     throw err;
   }
 
-  const db = getFirestore(getAdminApp());
-
+  const db = getFirestoreDb();
   const createdAt = Date.now();
 
   const review = {
@@ -116,6 +160,17 @@ export async function createReview(input) {
   };
 
   console.log('Saving review:', review);
+
+  if (!db) {
+    const existingReviews = await readLocalReviews();
+    const nextReviews = [{ id: `local-${createdAt}`, ...review }, ...existingReviews];
+    await writeLocalReviews(nextReviews);
+    console.log('Saved review locally');
+    return {
+      id: `local-${createdAt}`,
+      ...review,
+    };
+  }
 
   const doc = await db.collection('reviews').add(review);
 
