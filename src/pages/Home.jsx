@@ -64,7 +64,7 @@ export default function Home() {
       {/* STEP INSIDE */}
       <section id="inside" style={{ background: 'var(--dark)', padding: '80px 0' }}>
         <div className="container">
-          <div className="reveal" style={{ textAlign: 'center', marginBottom: '48px' }}>
+          <div className="reveal" style={{ textAlign: 'center', marginBottom: '40px' }}>
             <p className="section-label" style={{ color: 'var(--gold)' }}>Real Ambience</p>
             <h2 className="section-title" style={{ color: 'var(--cream)', textAlign: 'center' }}>Step Inside Teacrack</h2>
             <p className="inside-subtitle">See exactly how we look — warm seats, good vibes &amp; great chai waiting for you.</p>
