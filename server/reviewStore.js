@@ -68,15 +68,12 @@ async function readLocalReviews() {
 async function writeLocalReviews(reviews) {
   memoryReviews = reviews;
 
-  if (persistenceMode === 'memory') {
-    return;
-  }
-
   const reviewsFile = getReviewsDataFile();
 
   try {
     await fs.mkdir(path.dirname(reviewsFile), { recursive: true });
     await fs.writeFile(reviewsFile, JSON.stringify(reviews, null, 2), 'utf8');
+    persistenceMode = 'file';
   } catch (error) {
     if (error && (error.code === 'EROFS' || error.code === 'EPERM')) {
       persistenceMode = 'memory';
@@ -84,6 +81,7 @@ async function writeLocalReviews(reviews) {
       return;
     }
 
+    persistenceMode = 'memory';
     console.error('[reviews] Unable to write local review store:', error);
   }
 }

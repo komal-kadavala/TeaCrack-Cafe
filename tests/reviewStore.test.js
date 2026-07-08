@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { createReview, listReviews } from '../server/reviewStore.js';
@@ -24,6 +24,9 @@ test('review creation and listing work without Firebase credentials', async () =
 
     assert.equal(created.name, 'Alice');
     assert.equal(created.rating, 5);
+
+    const persisted = await readFile(tempFile, 'utf8');
+    assert.match(persisted, /Excellent service!/);
 
     const reviews = await listReviews();
     assert.ok(Array.isArray(reviews));
