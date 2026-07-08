@@ -54,7 +54,7 @@ export default function Home() {
             <div className="special-card reveal">
               <div className="special-emoji">🧋</div>
               <div className="special-name">KitKat Milkshake</div>
-              <p className="special-desc">Thick, indulgent, and utterly sinful. Our #1 bestseller since day one.</p>
+              <p className="special-desc">Thick, creamy, and utterly sinful. The bestseller that's been loved since day one.</p>
               <div className="special-price">100 Rs</div>
             </div>
           </div>
