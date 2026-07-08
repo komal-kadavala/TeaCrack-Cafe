@@ -41,21 +41,21 @@ export default function Home() {
               <div className="special-emoji">🍵</div>
               <div className="special-name">Spiced Masala Chai</div>
               <p className="special-desc">The classic that started it all. Rich, aromatic, and made fresh every time.</p>
-              <div className="special-price">45 Rs</div>
+              <div className="special-price">30 Rs</div>
             </div>
             
             <div className="special-card reveal">
               <div className="special-emoji">🍕</div>
               <div className="special-name">American Garden Pizza</div>
               <p className="special-desc">Our most loaded pizza — garden-fresh toppings on a crispy base with extra cheese.</p>
-              <div className="special-price">190 Rs</div>
+              <div className="special-price">130 Rs</div>
             </div>
             
             <div className="special-card reveal">
               <div className="special-emoji">🧋</div>
               <div className="special-name">KitKat Milkshake</div>
               <p className="special-desc">Thick, indulgent, and utterly sinful. Our #1 bestseller since day one.</p>
-              <div className="special-price">160 Rs</div>
+              <div className="special-price">100 Rs</div>
             </div>
           </div>
         </div>
