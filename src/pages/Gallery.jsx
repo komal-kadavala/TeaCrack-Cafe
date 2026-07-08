@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import useScrollReveal from '../hooks/useScrollReveal';
 import insideImg from '../assets/inside.jpg';
 import collageImg from '../assets/interior_collage.jpg';
@@ -6,6 +6,7 @@ import posterImg from '../assets/menu_poster.jpg';
 
 export default function Gallery() {
   useScrollReveal();
+  const [selectedImage, setSelectedImage] = useState(null);
 
   const galleryItems = [
     {
@@ -24,6 +25,19 @@ export default function Gallery() {
       desc: "Our menu highlights, delivery policies, and direct contact details at a glance."
     }
   ];
+
+  useEffect(() => {
+    if (!selectedImage) return undefined;
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setSelectedImage(null);
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [selectedImage]);
 
   return (
     <section id="gallery" style={{ minHeight: '100vh', paddingTop: '140px' }}>
@@ -50,14 +64,25 @@ export default function Gallery() {
               boxShadow: 'var(--shadow-premium)',
               transition: 'var(--transition-smooth)'
             }}>
-              <div style={{ height: '360px', overflow: 'hidden' }}>
+              <div
+                className="gallery-image-card"
+                style={{ height: '360px', overflow: 'hidden', cursor: 'zoom-in' }}
+                onClick={() => setSelectedImage(item)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    setSelectedImage(item);
+                  }
+                }}
+                tabIndex={0}
+                role="button"
+                aria-label={`Open ${item.title} in full view`}
+              >
                 <img 
                   src={item.img} 
                   alt={item.title} 
+                  className="gallery-thumb-image"
                   style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
                     transition: 'transform 0.5s ease'
                   }}
                   onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.03)'}
@@ -75,6 +100,26 @@ export default function Gallery() {
             </div>
           ))}
         </div>
+
+        {selectedImage && (
+          <div className="gallery-modal-backdrop" onClick={() => setSelectedImage(null)}>
+            <div className="gallery-modal" onClick={(event) => event.stopPropagation()}>
+              <button
+                type="button"
+                className="gallery-modal-close"
+                onClick={() => setSelectedImage(null)}
+                aria-label="Close gallery image"
+              >
+                ×
+              </button>
+              <img
+                src={selectedImage.img}
+                alt={selectedImage.title}
+                className="gallery-modal-image"
+              />
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );
