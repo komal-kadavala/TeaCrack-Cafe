@@ -1124,7 +1124,8 @@ footer {
   }
 
   .inside-media-container {
-    height: 320px;
+    height: auto;
+    min-height: 0;
   }
 
   .contact-grid {
