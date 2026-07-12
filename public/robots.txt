@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://teacrackcafe.vercel.app/sitemap.xml
+
+Disallow: /api/

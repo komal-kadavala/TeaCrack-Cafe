@@ -23,6 +23,11 @@ html {
   font-size: 16px;
 }
 
+img, svg, video, iframe {
+  max-width: 100%;
+  display: block;
+}
+
 body {
   background: var(--cream);
   font-family: 'DM Sans', sans-serif;

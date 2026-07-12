@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import useScrollReveal from '../hooks/useScrollReveal';
+import SEO from '../components/SEO';
 import ReviewCard from '../components/ReviewCard';
 import { sanitizeReviewInput, formatReviewDate, getReviewFingerprint } from '../services/reviewUtils';
 
@@ -123,6 +124,7 @@ export default function Reviews() {
 
   return (
     <section id="feedback" style={{ minHeight: '100vh', paddingTop: '140px' }}>
+      <SEO title="Reviews" path="/reviews" />
       <div className="container">
         <div className="reveal" style={{ textAlign: 'center', marginBottom: '52px' }}>
           <p className="section-label">Your Voice Matters</p>

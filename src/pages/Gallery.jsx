@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import useScrollReveal from '../hooks/useScrollReveal';
+import SEO from '../components/SEO';
 import insideImg from '../assets/inside.jpg';
 import collageImg from '../assets/interior_collage.jpg';
 import posterImg from '../assets/menu_poster.jpg';
@@ -41,6 +42,7 @@ export default function Gallery() {
 
   return (
     <section id="gallery" style={{ minHeight: '100vh', paddingTop: '140px' }}>
+      <SEO title="Gallery" path="/gallery" />
       <div className="container">
         <div className="reveal" style={{ textAlign: 'center', marginBottom: '48px' }}>
           <p className="section-label">Moments</p>
@@ -82,6 +84,8 @@ export default function Gallery() {
                   src={item.img} 
                   alt={item.title} 
                   className="gallery-thumb-image"
+                  loading="lazy"
+                  decoding="async"
                   style={{
                     transition: 'transform 0.5s ease'
                   }}

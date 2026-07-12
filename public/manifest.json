@@ -1,0 +1,21 @@
+{
+  "name": "Teacrack Cafe",
+  "short_name": "Teacrack",
+  "description": "Cozy cafe in Rajkot serving fresh chai, coffee, burgers, pizza and vegetarian favorites.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5edd8",
+  "theme_color": "#1a3a3a",
+  "icons": [
+    {
+      "src": "/logo.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "/logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}

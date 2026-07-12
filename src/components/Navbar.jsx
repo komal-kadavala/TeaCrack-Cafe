@@ -16,7 +16,7 @@ export default function Navbar() {
   return (
     <nav>
       <NavLink className="nav-logo" to="/" onClick={closeMenu}>
-        <img src={logoImg} alt="Teacrack Cafe Logo" />
+        <img src={logoImg} alt="Teacrack Cafe Logo" loading="lazy" decoding="async" />
         <span className="nav-logo-text">Teacrack</span>
       </NavLink>
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import Hero from '../components/Hero';
 import useScrollReveal from '../hooks/useScrollReveal';
+import SEO from '../components/SEO';
 import insideImg from '../assets/inside.jpg';
 
 export default function Home() {
@@ -14,6 +15,7 @@ export default function Home() {
 
   return (
     <div>
+      <SEO title="Home" path="/" />
       {/* HERO BANNER */}
       <Hero />
 
@@ -71,7 +73,7 @@ export default function Home() {
           </div>
           
           <div className="reveal inside-media-container">
-            <img src={insideImg} alt="Teacrack Cafe Ambience" />
+            <img src={insideImg} alt="Teacrack Cafe ambience with warm seating and cozy interiors" loading="lazy" decoding="async" />
           </div>
         </div>
       </section>

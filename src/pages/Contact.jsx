@@ -1,11 +1,13 @@
 import React from 'react';
 import useScrollReveal from '../hooks/useScrollReveal';
+import SEO from '../components/SEO';
 
 export default function Contact() {
   useScrollReveal();
 
   return (
     <section id="location" style={{ minHeight: '100vh', paddingTop: '140px', background: 'var(--cream)' }}>
+      <SEO title="Contact" path="/contact" />
       <div className="container">
         <div className="reveal" style={{ textAlign: 'center', marginBottom: '50px' }}>
           <p className="section-label">Come Visit Us</p>

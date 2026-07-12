@@ -36,6 +36,8 @@ export default function Hero() {
           <img 
             src={logoImg} 
             alt="Teacrack Cafe Logo" 
+            loading="eager"
+            decoding="async"
             style={{ 
               width: '150px', 
               height: '150px', 

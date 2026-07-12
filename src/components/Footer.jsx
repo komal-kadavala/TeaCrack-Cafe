@@ -9,6 +9,8 @@ export default function Footer() {
           <img 
             src={logoImg} 
             alt="Teacrack Cafe Logo" 
+            loading="lazy"
+            decoding="async"
             style={{ 
               width: '80px', 
               height: '80px', 

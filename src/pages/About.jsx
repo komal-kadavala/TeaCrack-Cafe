@@ -1,5 +1,6 @@
 import React from 'react';
 import useScrollReveal from '../hooks/useScrollReveal';
+import SEO from '../components/SEO';
 import { Link } from 'react-router-dom';
 
 export default function About() {
@@ -18,6 +19,7 @@ export default function About() {
 
   return (
     <div>
+      <SEO title="About Us" path="/about" />
       {/* Narrative Section */}
       <section id="about" className="about-section" style={{ minHeight: 'calc(100vh - 100px)', paddingTop: '140px', paddingBottom: '60px' }}>
         <div className="container">
